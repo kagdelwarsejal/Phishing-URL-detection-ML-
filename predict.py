@@ -3,6 +3,9 @@
 import joblib
 import numpy as np
 from feature_extractor import extract_features
+from visualize import risk_meter, plot_url_features
+from explain import get_shap_explainer, shap_explanation, shap_to_text
+
 
 # -------------------------
 # Load model & features
@@ -38,7 +41,33 @@ def predict_url(url):
     }
 
 # -------------------------
-# Human-readable explanation
+def predict_with_explain(url, background_data):
+    features = extract_features(url)
+    features = features[feature_columns]
+
+    proba = model.predict_proba(features)[0]
+    confidence = float(max(proba))
+    prediction = "PHISHING" if np.argmax(proba) == 1 else "SAFE"
+
+    # Risk level
+    risk = risk_meter(confidence)
+
+    # SHAP
+    explainer = get_shap_explainer(model, background_data)
+    shap_vals = shap_explanation(explainer, features)
+    shap_text = shap_to_text(shap_vals, features)
+
+    # Plot
+    plot_url_features(features)
+
+    return {
+        "url": url,
+        "prediction": prediction,
+        "confidence": round(confidence, 3),
+        "risk_level": risk,
+        "shap_explanation": shap_text
+    }
+
 # -------------------------
 
 def generate_explanation(features, prediction):
